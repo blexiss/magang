@@ -6,15 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
         Schema::create('audit_logs', function (Blueprint $table) {
     $table->id();
     $table->foreignId('inventory_id')->constrained();
-    $table->string('action'); // taken, added, updated, deleted
+    $table->string('action');
     $table->string('user');
     $table->string('location');
     $table->timestamps();

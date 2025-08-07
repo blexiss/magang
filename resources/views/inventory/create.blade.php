@@ -4,7 +4,7 @@
 <div class="container">
     <h1>Add New Inventory Item</h1>
 
-    <form action="{{ route('inventory.store') }}" method="POST">
+    <form id="inventory-form" action="{{ route('inventory.store') }}" method="POST">
         @csrf
 
         <div class="mb-3">
@@ -35,4 +35,38 @@
         <a href="{{ route('inventory.index') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
+
+<script>
+    document.getElementById('inventory-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => data[key] = value);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error("Server error");
+
+            alert('Item successfully added!');
+            window.location.href = "{{ route('inventory.index') }}";
+
+        } catch (err) {
+            const queue = JSON.parse(localStorage.getItem('pending_inventory') || '[]');
+            queue.push({ action: 'create', data });
+            localStorage.setItem('pending_inventory', JSON.stringify(queue));
+            alert('⚠️ Offline. Item saved locally and will sync when online.');
+            window.location.href = "{{ route('inventory.index') }}";
+        }
+    });
+</script>
 @endsection
