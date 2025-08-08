@@ -12,37 +12,55 @@ class InventoryController extends Controller
 {
 public function index(Request $request)
 {
-    $search = $request->input('search');
+    $search = trim($request->input('search'));
 
-    $query = Inventory::query();
+    try {
+        // Always cache the full inventory for offline use
+        $fullInventory = Inventory::all();
+        Storage::put('inventory_cache.json', $fullInventory->toJson());
 
-    if ($search) {
-        $query->where('id', 'like', "%{$search}%")
-              ->orWhere('name', 'like', "%{$search}%");
+        // Build the query
+        $query = Inventory::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                if (is_numeric($search)) {
+                    $q->where('id', $search);
+                }
+                $q->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'items' => $items,
+            ]);
+        }
+
+        return view('inventory.index', ['items' => $items]);
+
+    } catch (\Exception $e) {
+        Log::error('DB connection failed: ' . $e->getMessage());
+
+        if (Storage::exists('inventory_cache.json')) {
+            $cachedData = json_decode(Storage::get('inventory_cache.json'));
+            $items = collect($cachedData);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'items' => $items,
+                    'offline' => true,
+                ]);
+            }
+
+            return view('inventory.index', ['items' => $items, 'offline' => true]);
+        }
+
+        return back()->withErrors('Unable to load inventory. No offline data available.');
     }
-
-    $items = $query->get();
-
-    // Check if the request expects JSON (AJAX)
-    if ($request->ajax()) {
-        // Return JSON data for live search
-        return response()->json([
-            'items' => $items->map(function($item) {
-                return [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'quantity' => $item->quantity,
-                    'price' => $item->price,
-                    'location' => $item->location,
-                ];
-            }),
-        ]);
-    }
-
-    // For normal requests, return the blade view
-    return view('inventory.index', compact('items'));
 }
-
 
 
     public function create()

@@ -4,10 +4,18 @@
 <div class="container">
     <h1>Audit Log</h1>
 
+    @if(isset($offline))
+        <div class="alert alert-warning">
+            Showing cached audit logs — database connection is offline.
+        </div>
+    @endif
+
     @if($logs->isEmpty())
         <div class="alert alert-info">No audit logs found.</div>
     @else
         @php
+            // Removed 'use' statement - not allowed in Blade
+
             function actionIcon($action) {
                 $actionLower = strtolower($action);
                 if (str_contains($actionLower, 'deleted')) {
@@ -32,20 +40,25 @@
             </thead>
             <tbody>
                 @foreach($logs as $log)
+                    @php
+                        $created = is_object($log->created_at)
+                            ? $log->created_at
+                            : \Carbon\Carbon::parse($log->created_at);
+                    @endphp
                     <tr>
-                        <td title="{{ $log->created_at->format('M d, Y h:i:s A') }}">
-                            {{ $log->created_at->format('M d, Y h:i:s A') }} <br>
-                            <small class="text-muted">{{ $log->created_at->diffForHumans() }}</small>
+                        <td title="{{ $created->format('M d, Y h:i:s A') }}">
+                            {{ $created->format('M d, Y h:i:s A') }} <br>
+                            <small class="text-muted">{{ $created->diffForHumans() }}</small>
                         </td>
                         <td>
-                            @if($log->inventory)
-                                {{ $log->inventory->name }} (ID: {{ $log->inventory->id }})
+                            @if(property_exists($log, 'inventory') && $log->inventory)
+                                {{ $log->inventory->name ?? 'Unnamed' }} (ID: {{ $log->inventory->id ?? '?' }})
                             @else
-                                <em>Deleted Item (ID: {{ $log->inventory_id }})</em>
+                                <em>Deleted Item (ID: {{ $log->inventory_id ?? 'N/A' }})</em>
                             @endif
                         </td>
                         <td>{!! actionIcon($log->action) !!} {{ ucfirst($log->action) }}</td>
-                        <td>{{ $log->user }}</td>
+                        <td>{{ $log->user ?? 'Unknown' }}</td>
                     </tr>
                 @endforeach
             </tbody>
