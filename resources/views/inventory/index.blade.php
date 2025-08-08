@@ -57,7 +57,7 @@
             </script>
 
         @else
-            <div class="alert alert-info">No items found from server. Trying local cache...</div>
+
             <div id="cached-inventory"></div>
 
             <script>
